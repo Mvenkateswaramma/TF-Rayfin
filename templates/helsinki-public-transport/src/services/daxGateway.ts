@@ -70,14 +70,18 @@ export function needsPowerBiSignIn(): boolean {
 
 function isConnectorUnavailable(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
-  return /connectorfunction|not enabled|not found|404|501/i.test(message);
+  return /connectorfunction|not enabled|not found|404|501|connector (api|network) error/i.test(message);
 }
 
 async function runViaConnector(query: string): Promise<DaxRow[]> {
   const response = await getRayfinClient().connectors.transitModel.executeQuery({ query });
-  const failure = response.output?.queryError ?? response.output?.responseError;
-  if (failure) throw new Error(failure.message);
-  return response.output?.tables?.[0]?.rows ?? [];
+  // Rayfin 1.36+ returns a normalised { status, table | error } result.
+  if (response.status === 'error') {
+    const { category, code, message } = response.error;
+    throw new Error(`connector ${category} error${code ? ` ${code}` : ''}: ${message}`);
+  }
+  const { columns, rows } = response.table;
+  return rows.map((row) => Object.fromEntries(columns.map((column, i) => [column.name, row[i]])));
 }
 
 async function runViaHost(query: string): Promise<DaxRow[]> {
