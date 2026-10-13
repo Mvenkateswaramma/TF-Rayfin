@@ -1,4 +1,5 @@
 import { ConnectorsRayfinClient } from '@microsoft/rayfin-client/experimental';
+import { fabricSemanticModel } from '@microsoft/rayfin-connector-fabric-semanticmodel';
 
 import type { DataAppSchema } from '../../rayfin/data/schema';
 import type { AppConnectorsSchema } from '../../rayfin/connectors/schema';
@@ -25,7 +26,11 @@ export function initRayfinClient(config: RayfinBootstrapConfig) {
       publishableKey: config.publishableKey,
       useProxy: false,
       authStorage: true,
-    });
+      // Rayfin 1.36+: every connector in rayfin.yml needs a routing entry.
+      connectors: { transitModel: { connector: 'fabric-semanticmodel' } },
+    },
+    // Decodes the semantic model's Apache Arrow response.
+    { transitModel: fabricSemanticModel() });
   }
   return client;
 }
